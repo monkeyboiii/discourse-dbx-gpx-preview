@@ -1,0 +1,21 @@
+gpx_studio_base_url:
+  type: string
+  default: "https://gpx.studio"
+uploads_cdn_url:
+  type: string
+  default: ""
+preview_height:
+  type: integer
+  default: 520
+show_elevation:
+  type: bool
+  default: true
+elevation_height:
+  type: integer
+  default: 170
+distance_markers:
+  type: bool
+  default: true
+direction_markers:
+  type: bool
+  default: false

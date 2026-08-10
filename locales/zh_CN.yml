@@ -1,0 +1,8 @@
+zh_CN:
+  preview_button: "预览轨迹"
+  hide_button: "收起地图"
+  loading: "地图加载中…"
+  load_failed: "地图预览加载失败——请使用上方的下载链接。"
+  unsupported_route: "此文件保存的是规划路线而非记录轨迹，地图预览无法绘制。"
+  unsupported_empty: "此文件没有可在地图上绘制的轨迹。"
+  open_in_studio: "在 gpx.studio 中打开"

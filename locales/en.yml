@@ -1,0 +1,17 @@
+en:
+  theme_metadata:
+    settings:
+      gpx_studio_base_url: "Base URL of the gpx.studio deployment used for map embeds. Point at a self-hosted instance to keep map traffic on first-party infrastructure (needs its own basemap key — see README)."
+      uploads_cdn_url: "Optional uploads-CDN base (e.g. https://uploads-cdn.example.com). Anonymous viewers resolve attachments by following the short-url redirect to the raw S3 endpoint; when set, that URL is re-based onto this host so all map fetches ride the CDN. Signed-in resolutions already use the CDN."
+      preview_height: "Height of the embedded map in pixels."
+      show_elevation: "Show the elevation profile under the map."
+      elevation_height: "Height of the elevation profile in pixels."
+      distance_markers: "Show distance markers along the track."
+      direction_markers: "Show direction arrows along the track."
+  preview_button: "Preview track"
+  hide_button: "Hide map"
+  loading: "Loading map…"
+  load_failed: "Couldn't load the map preview — use the download link above."
+  unsupported_route: "This file stores a planned route rather than a recorded track, which the map preview can't draw."
+  unsupported_empty: "This file has no track that can be drawn on a map."
+  open_in_studio: "Open in gpx.studio"
