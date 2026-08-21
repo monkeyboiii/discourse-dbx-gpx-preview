@@ -6,3 +6,8 @@ zh_CN:
   unsupported_route: "此文件保存的是规划路线而非记录轨迹，地图预览无法绘制。"
   unsupported_empty: "此文件没有可在地图上绘制的轨迹。"
   open_in_studio: "在 gpx.studio 中打开"
+  trail_is_public: "这条骑行已显示在公开地图上。"
+  trail_is_private: "这条骑行未显示在地图上，只有你的链接能打开它。"
+  trail_make_public: "显示在地图上"
+  trail_make_private: "从地图上移除"
+  trail_toggle_failed: "操作未成功——请重试。"

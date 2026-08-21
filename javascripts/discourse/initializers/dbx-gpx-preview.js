@@ -385,9 +385,94 @@ export default {
         } else {
           (block || anchor).after(wrapper);
         }
+        return wrapper;
       }
 
-      function decorate(el) {
+      // Whether this post holds a claimed trail, keyed by post id. A miss is remembered
+      // as null: almost every GPX post is somebody's ordinary attachment, and asking the
+      // forum again on every re-render would be one request per scroll.
+      const trailCache = new Map();
+
+      function loadTrail(postId) {
+        if (trailCache.has(postId)) return Promise.resolve(trailCache.get(postId));
+        const p = ajax(`/dbx/trails/post/${postId}.json`)
+          .then((trail) => {
+            trailCache.set(postId, trail);
+            return trail;
+          })
+          .catch(() => {
+            // 404 is the ordinary answer here — this post is not a claimed trail.
+            trailCache.set(postId, null);
+            return null;
+          });
+        trailCache.set(postId, p);
+        return p;
+      }
+
+      /**
+       * The one control that decides whether a ride is on the public map.
+       *
+       * It lives on the post because the post is the trail: it holds the file, its owner
+       * owns the trail, and deleting it takes the trail off the map. Putting the switch
+       * anywhere else would mean two places to look for the same fact.
+       */
+      function addVisibilityToggle(wrapper, postId) {
+        loadTrail(postId).then((trail) => {
+          if (!trail?.secret || !wrapper.isConnected) return;
+
+          const row = document.createElement("div");
+          row.className = "dbx-gpx-preview__visibility";
+
+          const note = document.createElement("span");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "btn btn-small";
+
+          let state = trail.visibility;
+          let secret = trail.secret;
+
+          function paint() {
+            const isPublic = state === "public";
+            note.textContent = i18n(
+              themePrefix(isPublic ? "trail_is_public" : "trail_is_private")
+            );
+            button.textContent = i18n(
+              themePrefix(isPublic ? "trail_make_private" : "trail_make_public")
+            );
+            row.classList.toggle("dbx-gpx-preview__visibility--public", isPublic);
+          }
+
+          button.addEventListener("click", () => {
+            const next = state === "public" ? "private" : "public";
+            button.disabled = true;
+            ajax(`/dbx/trails/${secret}/visibility.json`, {
+              type: "POST",
+              data: { visibility: next },
+            })
+              .then((updated) => {
+                state = updated.visibility;
+                // Going private mints a fresh secret, so the control has to adopt it or
+                // the next tap addresses a trail that no longer answers to that name.
+                secret = updated.secret || secret;
+                trailCache.set(postId, updated);
+                paint();
+              })
+              .catch(() => {
+                note.textContent = i18n(themePrefix("trail_toggle_failed"));
+              })
+              .finally(() => {
+                button.disabled = false;
+              });
+          });
+
+          paint();
+          row.append(note, button);
+          wrapper.appendChild(row);
+        });
+      }
+
+      function decorate(el, helper) {
+        const post = helper?.getModel?.();
         for (const anchor of [...el.querySelectorAll("a.attachment[href]")]) {
           if (anchor.hasAttribute(PROCESSED_ATTR)) continue;
           if (anchor.closest("aside.quote, .dbx-gpx-preview")) continue;
@@ -395,7 +480,12 @@ export default {
           const source = gpxSource(anchor);
           if (!source) continue;
 
-          buildPreview(anchor, source);
+          const wrapper = buildPreview(anchor, source);
+          // Only the owner is asked, and only in a real post stream: the composer
+          // preview has no post id, and a reader has no say over somebody else's trail.
+          if (wrapper && post?.id && post?.yours) {
+            addVisibilityToggle(wrapper, post.id);
+          }
         }
       }
 

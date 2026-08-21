@@ -56,3 +56,19 @@
 .dbx-gpx-preview--failed .dbx-gpx-preview__error {
   display: inline;
 }
+
+/* The owner's switch. Sits under the preview because it is about the trail, not about
+   the map that happens to be showing it. */
+.dbx-gpx-preview__visibility {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  flex-wrap: wrap;
+  margin-top: 0.5em;
+  font-size: var(--font-down-1);
+  color: var(--primary-medium);
+}
+
+.dbx-gpx-preview__visibility--public {
+  color: var(--primary);
+}
