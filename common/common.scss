@@ -72,3 +72,13 @@
 .dbx-gpx-preview__visibility--public {
   color: var(--primary);
 }
+
+/* The eye rides with the label rather than beside it. */
+.dbx-gpx-preview__visibility .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.dbx-gpx-preview__visibility--public .btn svg {
+  color: var(--tertiary);
+}
