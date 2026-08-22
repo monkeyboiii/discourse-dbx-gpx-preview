@@ -481,9 +481,12 @@ export default {
           if (!source) continue;
 
           const wrapper = buildPreview(anchor, source);
-          // Only the owner is asked, and only in a real post stream: the composer
-          // preview has no post id, and a reader has no say over somebody else's trail.
-          if (wrapper && post?.id && post?.yours) {
+          // Asked for any post with an id, and the SERVER decides. It used to require
+          // post.yours, which broke the moment the receipt started coming from the system
+          // user instead of the rider: the post is no longer theirs, so the one control
+          // they need vanished. /dbx/trails/post/<id> already 404s unless the caller owns
+          // the claim, so that endpoint is the authorisation and this does not have to be.
+          if (wrapper && post?.id) {
             addVisibilityToggle(wrapper, post.id);
           }
         }
