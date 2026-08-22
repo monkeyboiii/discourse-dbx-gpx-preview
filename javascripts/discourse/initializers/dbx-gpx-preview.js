@@ -391,6 +391,8 @@ export default {
       // The same pair the map sheet uses, so "on the map" looks like one idea in both
       // places. This button is the ONLY thing that decides it — a personal message being
       // private or public has never had any bearing on whether the trail is drawn.
+      const PIN =
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>';
       const EYE =
         '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>';
       const EYE_OFF =
@@ -482,6 +484,57 @@ export default {
         });
       }
 
+      /**
+       * The other way onto the map: a rider who posted their ride here first.
+       *
+       * Until this existed the only route from a public post to the map was an operator
+       * running a script, which is not self-service by any reading. It is offered only on
+       * a post the viewer wrote and only when that post is not already a trail — the
+       * server checks both again, so this is about not showing a button that would fail.
+       */
+      function addImportButton(wrapper, post) {
+        const row = document.createElement("div");
+        row.className = "dbx-gpx-preview__visibility";
+        const note = document.createElement("span");
+        note.textContent = i18n(themePrefix("trail_import_hint"));
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn btn-small";
+        button.innerHTML = `${PIN}<span></span>`;
+        button.querySelector("span").textContent = i18n(themePrefix("trail_import"));
+
+        button.addEventListener("click", () => {
+          button.disabled = true;
+          note.textContent = i18n(themePrefix("trail_import_working"));
+          ajax("/dbx/trails/import.json", { type: "POST", data: { post_id: post.id } })
+            .then((trail) => {
+              trailCache.set(post.id, trail);
+              row.remove();
+              // Straight into the eye control the trail now has, so the rider ends up
+              // looking at the same switch every other trail owner has, in the same place.
+              addVisibilityToggle(wrapper, post.id);
+              if (trail.refused) {
+                const why = document.createElement("div");
+                why.className = "dbx-gpx-preview__visibility";
+                why.textContent = i18n(themePrefix(`trail_import_refused_${trail.refused}`), {
+                  defaultValue: i18n(themePrefix("trail_import_refused")),
+                });
+                wrapper.appendChild(why);
+              }
+            })
+            .catch((e) => {
+              const key = e?.jqXHR?.responseJSON?.error;
+              note.textContent = i18n(themePrefix(`trail_import_error_${key}`), {
+                defaultValue: i18n(themePrefix("trail_import_error")),
+              });
+              button.disabled = false;
+            });
+        });
+
+        row.append(note, button);
+        wrapper.appendChild(row);
+      }
+
       function decorate(el, helper) {
         const post = helper?.getModel?.();
         for (const anchor of [...el.querySelectorAll("a.attachment[href]")]) {
@@ -498,7 +551,14 @@ export default {
           // they need vanished. /dbx/trails/post/<id> already 404s unless the caller owns
           // the claim, so that endpoint is the authorisation and this does not have to be.
           if (wrapper && post?.id) {
-            addVisibilityToggle(wrapper, post.id);
+            // A post that is already a trail gets the switch; one the viewer wrote and
+            // that is not yet a trail gets the way in. Nobody gets both, and a stranger's
+            // post gets neither.
+            loadTrail(post.id).then((trail) => {
+              if (!wrapper.isConnected) return;
+              if (trail?.secret) addVisibilityToggle(wrapper, post.id);
+              else if (post.yours) addImportButton(wrapper, post);
+            });
           }
         }
       }
