@@ -82,3 +82,12 @@
 .dbx-gpx-preview__visibility--public .btn svg {
   color: var(--tertiary);
 }
+
+// Sits under the preview, on its own line, so it reads as a second destination rather
+// than a second half of the preview button.
+.dbx-gpx-preview__map {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}

@@ -484,6 +484,28 @@ export default {
         });
       }
 
+      const MAP_SVG =
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>';
+
+      /**
+       * Where this ride is on the map.
+       *
+       * The inline preview answers "what does this look like"; it cannot answer "where does
+       * this sit among everything else", which is the question the map exists for. Offered
+       * to anyone the server will tell — its owner, or any reader of a public trail.
+       */
+      function addMapLink(wrapper, trail) {
+        if (!trail?.map_url) return;
+        const link = document.createElement("a");
+        link.className = "btn btn-small dbx-gpx-preview__map";
+        link.href = trail.map_url;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.innerHTML = `${MAP_SVG}<span></span>`;
+        link.querySelector("span").textContent = i18n(themePrefix("see_on_map"));
+        wrapper.appendChild(link);
+      }
+
       /**
        * The other way onto the map: a rider who posted their ride here first.
        *
@@ -510,6 +532,7 @@ export default {
             .then((trail) => {
               trailCache.set(post.id, trail);
               row.remove();
+              addMapLink(wrapper, trail);
               // Straight into the eye control the trail now has, so the rider ends up
               // looking at the same switch every other trail owner has, in the same place.
               addVisibilityToggle(wrapper, post.id);
@@ -556,8 +579,11 @@ export default {
             // post gets neither.
             loadTrail(post.id).then((trail) => {
               if (!wrapper.isConnected) return;
+              // The map link comes first because it is the one thing every reader of a
+              // public trail can use; the switch below it is the owner's alone.
+              addMapLink(wrapper, trail);
               if (trail?.secret) addVisibilityToggle(wrapper, post.id);
-              else if (post.yours) addImportButton(wrapper, post);
+              else if (!trail && post.yours) addImportButton(wrapper, post);
             });
           }
         }

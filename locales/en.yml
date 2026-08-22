@@ -20,6 +20,7 @@ en:
   trail_make_public: "Put it on the map"
   trail_make_private: "Take it off the map"
   trail_toggle_failed: "That did not go through — try again."
+  see_on_map: "See it on the map"
   trail_import: "Put it on the map"
   trail_import_hint: "This ride is not on the map yet."
   trail_import_working: "Adding it…"
