@@ -256,16 +256,76 @@ export default {
         return p;
       }
 
+      const DOWNLOAD_SVG =
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+
       function buildPreview(anchor, source) {
         anchor.setAttribute(PROCESSED_ATTR, "true");
 
         const wrapper = document.createElement("div");
         wrapper.className = "dbx-gpx-preview";
 
+        // One card, not three loose rows. The pieces were a link, a pair of buttons and a
+        // sentence, each on its own line and none of them saying what the file WAS — so
+        // the loudest thing in the post was a filename ending in ".gpx+xml.gpx".
+        const card = document.createElement("div");
+        card.className = "dbx-gpx-card";
+
+        const head = document.createElement("div");
+        head.className = "dbx-gpx-card__head";
+
+        // The ride's name is the heading. The extension chain is machine noise — Discourse
+        // appends its own .gpx to a file the recorder already called .gpx+xml — so it is
+        // stripped rather than clamped, and what is left is what the rider typed.
+        let name = (anchor.textContent || "").trim();
+        for (let i = 0; i < 3; i++) name = name.replace(/(\.gpx|\+xml)$/i, "");
+        const title = document.createElement("span");
+        title.className = "dbx-gpx-card__title";
+        title.textContent = name || "GPX";
+        title.title = (anchor.textContent || "").trim();
+
+        // The size is a bare text node after the cooked anchor. Lift it onto the meta line
+        // and take it out of the paragraph, or it is left stranded next to a hidden link.
+        let size = "";
+        const sizeNode = anchor.nextSibling;
+        if (sizeNode && sizeNode.nodeType === 3) {
+          const m = sizeNode.textContent.match(/\(([^)]+)\)/);
+          if (m) {
+            size = m[1];
+            sizeNode.textContent = sizeNode.textContent.replace(m[0], "");
+          }
+        }
+
+        // The download moves INTO the card, as an icon at the end of the title line. The
+        // original link stays in the DOM but hidden, so a post still degrades to a plain
+        // attachment if this component is ever switched off.
+        const dl = document.createElement("a");
+        dl.className = "dbx-gpx-card__dl";
+        dl.href = anchor.href;
+        dl.setAttribute("download", "");
+        dl.title = i18n(themePrefix("download"));
+        dl.setAttribute("aria-label", i18n(themePrefix("download")));
+        dl.innerHTML = DOWNLOAD_SVG;
+        anchor.classList.add("dbx-gpx-preview__source");
+
+        head.append(title, dl);
+
+        const meta = document.createElement("p");
+        meta.className = "dbx-gpx-card__meta";
+        const sizeSpan = document.createElement("span");
+        sizeSpan.textContent = size;
+        const note = document.createElement("span");
+        note.className = "dbx-gpx-card__note";
+        meta.append(sizeSpan, note);
+
+        const actions = document.createElement("div");
+        actions.className = "dbx-gpx-card__actions";
+
         const button = document.createElement("button");
         button.type = "button";
         button.className = "btn btn-default dbx-gpx-preview__toggle";
         button.textContent = i18n(themePrefix("preview_button"));
+        actions.appendChild(button);
 
         const loadingNote = document.createElement("span");
         loadingNote.className = "dbx-gpx-preview__loading";
@@ -275,7 +335,8 @@ export default {
         errorNote.className = "dbx-gpx-preview__error";
         errorNote.textContent = i18n(themePrefix("load_failed"));
 
-        wrapper.append(button, loadingNote, errorNote);
+        card.append(head, meta, actions);
+        wrapper.append(card, loadingNote, errorNote);
 
         let content = null;
         let gen = 0;
@@ -430,10 +491,8 @@ export default {
         loadTrail(postId).then((trail) => {
           if (!trail?.secret || !wrapper.isConnected) return;
 
-          const row = document.createElement("div");
-          row.className = "dbx-gpx-preview__visibility";
-
-          const note = document.createElement("span");
+          const row = actionsOf(wrapper);
+          const note = noteOf(wrapper) || document.createElement("span");
           const button = document.createElement("button");
           button.type = "button";
           button.className = "btn btn-small";
@@ -452,7 +511,7 @@ export default {
             button.querySelector("span").textContent = i18n(
               themePrefix(isPublic ? "trail_make_private" : "trail_make_public")
             );
-            row.classList.toggle("dbx-gpx-preview__visibility--public", isPublic);
+            button.classList.toggle("dbx-gpx-card__btn--public", isPublic);
           }
 
           button.addEventListener("click", () => {
@@ -479,8 +538,7 @@ export default {
           });
 
           paint();
-          row.append(note, button);
-          wrapper.appendChild(row);
+          row.appendChild(button);
         });
       }
 
@@ -494,6 +552,9 @@ export default {
        * this sit among everything else", which is the question the map exists for. Offered
        * to anyone the server will tell — its owner, or any reader of a public trail.
        */
+      const actionsOf = (wrapper) => wrapper.querySelector(".dbx-gpx-card__actions") || wrapper;
+      const noteOf = (wrapper) => wrapper.querySelector(".dbx-gpx-card__note");
+
       function addMapLink(wrapper, trail) {
         if (!trail?.map_url) return;
         const link = document.createElement("a");
@@ -503,7 +564,7 @@ export default {
         link.rel = "noopener";
         link.innerHTML = `${MAP_SVG}<span></span>`;
         link.querySelector("span").textContent = i18n(themePrefix("see_on_map"));
-        wrapper.appendChild(link);
+        actionsOf(wrapper).appendChild(link);
       }
 
       /**
@@ -515,9 +576,8 @@ export default {
        * server checks both again, so this is about not showing a button that would fail.
        */
       function addImportButton(wrapper, post) {
-        const row = document.createElement("div");
-        row.className = "dbx-gpx-preview__visibility";
-        const note = document.createElement("span");
+        const row = actionsOf(wrapper);
+        const note = noteOf(wrapper) || document.createElement("span");
         note.textContent = i18n(themePrefix("trail_import_hint"));
         const button = document.createElement("button");
         button.type = "button";
@@ -531,18 +591,15 @@ export default {
           ajax("/dbx/trails/import.json", { type: "POST", data: { post_id: post.id } })
             .then((trail) => {
               trailCache.set(post.id, trail);
-              row.remove();
+              button.remove();
               addMapLink(wrapper, trail);
               // Straight into the eye control the trail now has, so the rider ends up
               // looking at the same switch every other trail owner has, in the same place.
               addVisibilityToggle(wrapper, post.id);
               if (trail.refused) {
-                const why = document.createElement("div");
-                why.className = "dbx-gpx-preview__visibility";
-                why.textContent = i18n(themePrefix(`trail_import_refused_${trail.refused}`), {
+                note.textContent = i18n(themePrefix(`trail_import_refused_${trail.refused}`), {
                   defaultValue: i18n(themePrefix("trail_import_refused")),
                 });
-                wrapper.appendChild(why);
               }
             })
             .catch((e) => {
@@ -554,8 +611,7 @@ export default {
             });
         });
 
-        row.append(note, button);
-        wrapper.appendChild(row);
+        row.appendChild(button);
       }
 
       function decorate(el, helper) {

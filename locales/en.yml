@@ -8,6 +8,7 @@ en:
       elevation_height: "Height of the elevation profile in pixels."
       distance_markers: "Show distance markers along the track."
       direction_markers: "Show direction arrows along the track."
+  download: "Download the file"
   preview_button: "Preview track"
   hide_button: "Hide map"
   loading: "Loading map…"
