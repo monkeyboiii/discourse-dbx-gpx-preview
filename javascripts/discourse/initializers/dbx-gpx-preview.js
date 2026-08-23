@@ -644,6 +644,12 @@ export default {
             // post gets neither.
             loadTrail(post.id).then((trail) => {
               if (!wrapper.isConnected) return;
+              // Whether a ride is on the public map is public information, so the dot is
+              // set from the trail itself and not from the owner-only toggle below — an
+              // anonymous reader was getting the button and none of the state.
+              wrapper
+                .querySelector(".dbx-gpx-card__state")
+                ?.classList.toggle("is-public", trail?.visibility === "public");
               // The map link comes first because it is the one thing every reader of a
               // public trail can use; the switch below it is the owner's alone.
               addMapLink(wrapper, trail);
