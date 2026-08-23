@@ -13,6 +13,7 @@ zh_CN:
   trail_make_private: "从地图上移除"
   trail_toggle_failed: "操作未成功——请重试。"
   see_on_map: "在地图上查看"
+  see_on_map_secret: "用你的私密链接打开"
   trail_import: "把它放上地图"
   trail_import_hint: "这条骑行还没有出现在地图上。"
   trail_import_working: "正在添加…"

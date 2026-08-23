@@ -256,6 +256,12 @@ export default {
         return p;
       }
 
+      const INFO_SVG =
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+      // A private trail's map link opens the SECRET url — the one only its owner holds.
+      // Marked with a key rather than a sentence: the row is already three labels long.
+      const KEY_SVG =
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>';
       const DOWNLOAD_SVG =
         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
 
@@ -324,7 +330,8 @@ export default {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "btn btn-default dbx-gpx-preview__toggle";
-        button.textContent = i18n(themePrefix("preview_button"));
+        button.innerHTML = `${INFO_SVG}<span></span>`;
+        button.querySelector("span").textContent = i18n(themePrefix("preview_button"));
         actions.appendChild(button);
 
         const loadingNote = document.createElement("span");
@@ -351,7 +358,7 @@ export default {
             "dbx-gpx-preview--loading",
             "dbx-gpx-preview--failed"
           );
-          button.textContent = i18n(themePrefix("preview_button"));
+          button.querySelector("span").textContent = i18n(themePrefix("preview_button"));
         }
 
         function fail() {
@@ -401,7 +408,7 @@ export default {
           const myGen = ++gen;
           wrapper.classList.remove("dbx-gpx-preview--failed");
           wrapper.classList.add("dbx-gpx-preview--open", "dbx-gpx-preview--loading");
-          button.textContent = i18n(themePrefix("hide_button"));
+          button.querySelector("span").textContent = i18n(themePrefix("hide_button"));
 
           resolveFileUrl(source)
             .then((fileUrl) => {
@@ -562,8 +569,14 @@ export default {
         link.href = trail.map_url;
         link.target = "_blank";
         link.rel = "noopener";
-        link.innerHTML = `${MAP_SVG}<span></span>`;
+        // Public trails resolve by their public id and anyone may follow the link; a
+        // private one resolves by the secret, so the same button is doing a different and
+        // more sensitive thing. Said with a key and a dashed edge, not with more words.
+        const owner = trail.visibility !== "public";
+        link.classList.toggle("dbx-gpx-card__btn--secret", owner);
+        link.innerHTML = `${owner ? KEY_SVG : MAP_SVG}<span></span>`;
         link.querySelector("span").textContent = i18n(themePrefix("see_on_map"));
+        if (owner) link.title = i18n(themePrefix("see_on_map_secret"));
         actionsOf(wrapper).appendChild(link);
       }
 

@@ -162,3 +162,20 @@
 .dbx-gpx-preview__source {
   display: none;
 }
+
+/* Rounded to match the card, not Discourse's default square-ish button. */
+.dbx-gpx-card__actions .btn,
+.dbx-gpx-card__actions a.btn {
+  border-radius: 999px;
+  padding: 0.45em 0.95em;
+}
+/* The owner-only link. A dashed edge says "this one is yours" without a word of text,
+   and the key icon carries it where colour alone would not (or where colour is all a
+   colourblind reader gets). */
+.dbx-gpx-card__btn--secret {
+  border: 1px dashed var(--primary-medium);
+  background: transparent;
+}
+.dbx-gpx-card__btn--secret svg {
+  color: var(--primary-medium);
+}
