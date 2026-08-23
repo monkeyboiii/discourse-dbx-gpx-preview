@@ -9,6 +9,8 @@ en:
       distance_markers: "Show distance markers along the track."
       direction_markers: "Show direction arrows along the track."
   download: "Download the file"
+  share: "Share this ride"
+  share_copied: "Link copied"
   preview_button: "Preview track"
   hide_button: "Hide map"
   loading: "Loading map…"
