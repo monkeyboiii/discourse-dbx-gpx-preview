@@ -138,11 +138,10 @@
   font-size: var(--font-down-1);
   line-height: 1.45;
 }
-.dbx-gpx-card__meta span + span::before {
+/* One separator, and only when there is something on both sides of it. A generic
+   `span + span` rule put a dot before the size whenever the state span was empty. */
+.dbx-gpx-card__note:not(:empty)::before {
   content: " · ";
-}
-.dbx-gpx-card__meta span:empty::before {
-  content: none;
 }
 .dbx-gpx-card__actions {
   display: flex;
@@ -169,13 +168,15 @@
   border-radius: 999px;
   padding: 0.45em 0.95em;
 }
-/* The owner-only link. A dashed edge says "this one is yours" without a word of text,
-   and the key icon carries it where colour alone would not (or where colour is all a
-   colourblind reader gets). */
-.dbx-gpx-card__btn--secret {
-  border: 1px dashed var(--primary-medium);
-  background: transparent;
-}
-.dbx-gpx-card__btn--secret svg {
-  color: var(--primary-medium);
+/* On the map: a green dot leading the meta line, the same at-a-glance mark the map uses.
+   Absent when private — an empty state span collapses and the size reads first. */
+.dbx-gpx-card__state.is-public::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: 2px;
+  border-radius: 50%;
+  background: var(--success, #2e7d32);
+  vertical-align: baseline;
 }

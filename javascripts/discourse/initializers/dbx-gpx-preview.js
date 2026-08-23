@@ -258,10 +258,6 @@ export default {
 
       const INFO_SVG =
         '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
-      // A private trail's map link opens the SECRET url — the one only its owner holds.
-      // Marked with a key rather than a sentence: the row is already three labels long.
-      const KEY_SVG =
-        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>';
       const DOWNLOAD_SVG =
         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
 
@@ -320,9 +316,11 @@ export default {
         meta.className = "dbx-gpx-card__meta";
         const sizeSpan = document.createElement("span");
         sizeSpan.textContent = size;
+        const state = document.createElement("span");
+        state.className = "dbx-gpx-card__state";
         const note = document.createElement("span");
         note.className = "dbx-gpx-card__note";
-        meta.append(sizeSpan, note);
+        meta.append(state, sizeSpan, note);
 
         const actions = document.createElement("div");
         actions.className = "dbx-gpx-card__actions";
@@ -519,6 +517,9 @@ export default {
               themePrefix(isPublic ? "trail_make_private" : "trail_make_public")
             );
             button.classList.toggle("dbx-gpx-card__btn--public", isPublic);
+            wrapper
+              .querySelector(".dbx-gpx-card__state")
+              ?.classList.toggle("is-public", isPublic);
           }
 
           button.addEventListener("click", () => {
@@ -549,8 +550,6 @@ export default {
         });
       }
 
-      const MAP_SVG =
-        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>';
 
       /**
        * Where this ride is on the map.
@@ -569,14 +568,11 @@ export default {
         link.href = trail.map_url;
         link.target = "_blank";
         link.rel = "noopener";
-        // Public trails resolve by their public id and anyone may follow the link; a
-        // private one resolves by the secret, so the same button is doing a different and
-        // more sensitive thing. Said with a key and a dashed edge, not with more words.
-        const owner = trail.visibility !== "public";
-        link.classList.toggle("dbx-gpx-card__btn--secret", owner);
-        link.innerHTML = `${owner ? KEY_SVG : MAP_SVG}<span></span>`;
+        // A place, so the location dot. Whether the ride is public is NOT said here — that
+        // is the toggle's job, one button along, and saying it twice made the row argue
+        // with itself.
+        link.innerHTML = `${PIN}<span></span>`;
         link.querySelector("span").textContent = i18n(themePrefix("see_on_map"));
-        if (owner) link.title = i18n(themePrefix("see_on_map_secret"));
         actionsOf(wrapper).appendChild(link);
       }
 
