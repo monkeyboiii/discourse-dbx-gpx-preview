@@ -141,6 +141,11 @@ button.dbx-gpx-card__dl {
   cursor: pointer;
   margin-right: 0;
 }
+/* `display: grid` above out-specifies the UA's `[hidden] { display: none }` — they tie on
+   specificity and the author sheet wins — so a hidden share button would still draw. */
+.dbx-gpx-card__dl[hidden] {
+  display: none;
+}
 .dbx-gpx-card__share--done {
   color: var(--success);
 }

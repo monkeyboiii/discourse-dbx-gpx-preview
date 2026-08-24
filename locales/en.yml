@@ -11,7 +11,7 @@ en:
   download: "Download the file"
   share: "Copy a link to this ride"
   share_copied: "Link copied"
-  share_failed: "Couldn't copy — long-press the link instead"
+  share_failed: "Couldn't copy the link"
   preview_button: "Preview track"
   hide_button: "Hide map"
   loading: "Loading map…"

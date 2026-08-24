@@ -264,42 +264,6 @@ export default {
         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>';
 
       /**
-       * The post this attachment lives in — never the raw file URL, which outlives the
-       * post, carries no context, and on a private ride is the secret itself.
-       *
-       * Three ways down, because the DOM archaeology is the fragile part and the last
-       * step never fails. `<article id="post_N">` carries the post NUMBER (not the id),
-       * and Discourse keeps `link[rel=canonical]` pointing at the current topic across
-       * SPA route changes — together those give the pretty URL a chat app can preview.
-       * `/p/<id>` is a supported permalink but opaque, so it is the fallback rather than
-       * the first choice.
-       */
-      function postUrl(anchor) {
-        const article = anchor.closest("article[data-post-id]");
-        const number = (article?.id || "").replace(/^post_/, "");
-        // Two things have to be taken off the canonical before a post number is appended,
-        // and both produced a wrong link in testing:
-        //   `.../t/slug/64?page=0` -> appending gave `.../64?page=0/6`
-        //   `.../t/slug/64/6`      -> appending gave `.../64/6/6`
-        // The second is the normal case, because Discourse rewrites this element as you
-        // scroll (`page:changed`) and the current URL includes whichever post you are on.
-        // So: drop the query, then drop a trailing post number, keeping `/t/<slug>/<id>`.
-        // The match is required rather than best-effort — if this is not a topic URL,
-        // appending a number to it invents a route.
-        const canonical = document.querySelector('link[rel="canonical"]')?.href;
-        const topic = canonical
-          ?.split(/[?#]/)[0]
-          .replace(/\/+$/, "")
-          .match(/^(.*\/t\/[^/]+\/\d+)(?:\/\d+)?$/);
-        if (topic && /^\d+$/.test(number)) {
-          return `${topic[1]}/${number}`;
-        }
-        const id = article?.dataset?.postId;
-        if (id) return `${window.location.origin}/p/${id}`;
-        return window.location.href;
-      }
-
-      /**
        * Clipboard, with the older path behind it.
        *
        * `navigator.clipboard` needs a secure context AND, in some embedded WebViews, a
@@ -399,21 +363,31 @@ export default {
         dl.innerHTML = DOWNLOAD_SVG;
         anchor.classList.add("dbx-gpx-preview__source");
 
-        // Share sits after the download, because the two are the same kind of act — take
-        // this file somewhere — and the one people reach for more often should not be the
-        // one they have to hunt for. It shares the POST, not the file: a raw CDN URL
-        // outlives the post, carries no context, and on a private ride is the secret
-        // itself. `navigator.share` where the browser has it, clipboard everywhere else.
+        // Share sits before the download, because the two are the same kind of act — take
+        // this ride somewhere — and the one people reach for more often should not be the
+        // one they hunt for.
+        //
+        // **It only exists for a ride that is on the map**, and it hands out that ride's
+        // own page: `/share/route/<id>`. Never the raw file, which outlives the post,
+        // carries no context and on a private ride IS the secret; and never the forum
+        // post either, which is a thread about a ride rather than the ride. A GPX that is
+        // not on the map has no public address, so there is nothing to share and the
+        // button stays away rather than offering a lesser link.
+        //
+        // Built hidden here so the head's layout is decided in one place; `addMapLink`
+        // reveals it when the trail lookup lands.
         const share = document.createElement("button");
         share.type = "button";
         share.className = "dbx-gpx-card__dl dbx-gpx-card__share";
+        share.hidden = true;
         share.title = i18n(themePrefix("share"));
         share.setAttribute("aria-label", i18n(themePrefix("share")));
         share.innerHTML = SHARE_SVG;
         share.addEventListener("click", async () => {
-          // Read at click time, not at build time: the trail state arrives after the card
-          // is on screen, and a link captured in the closure would be the post forever.
-          const url = wrapper.dataset.shareUrl || postUrl(anchor);
+          // Read at click time, not captured: the trail state arrives after the card is
+          // already on screen.
+          const url = wrapper.dataset.shareUrl;
+          if (!url) return;
           const ok = await copyText(url);
           flash(
             share,
@@ -696,11 +670,14 @@ export default {
       const noteOf = (wrapper) => wrapper.querySelector(".dbx-gpx-card__note");
 
       function addMapLink(wrapper, trail) {
-        // Set even when the button below is not drawn, so the share button switches from
-        // the forum post to the map as soon as the trail is known.
-        const share = shareRouteFor(trail);
-        if (share) wrapper.dataset.shareUrl = share;
+        // The share button lives or dies by this: it is the only thing that gives a ride
+        // a public address. Runs before the early return so a trail with no map_url also
+        // takes the button away rather than leaving a stale one from a previous paint.
+        const route = shareRouteFor(trail);
+        const button = wrapper.querySelector(".dbx-gpx-card__share");
+        if (route) wrapper.dataset.shareUrl = route;
         else delete wrapper.dataset.shareUrl;
+        if (button) button.hidden = !route;
         if (!trail?.map_url) return;
         const link = document.createElement("a");
         link.className = "btn btn-small dbx-gpx-preview__map";
