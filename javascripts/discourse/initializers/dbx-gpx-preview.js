@@ -277,15 +277,22 @@ export default {
       function postUrl(anchor) {
         const article = anchor.closest("article[data-post-id]");
         const number = (article?.id || "").replace(/^post_/, "");
-        // The query string has to go before the post number is appended: a topic opened
-        // directly is served with `<link rel=canonical href=".../t/slug/123?page=0">`,
-        // and naively appending gives `.../123?page=0/4`. Discourse keeps this element
-        // current across SPA navigation (it rewrites it on `page:changed`), so it is
-        // trustworthy once cleaned.
+        // Two things have to be taken off the canonical before a post number is appended,
+        // and both produced a wrong link in testing:
+        //   `.../t/slug/64?page=0` -> appending gave `.../64?page=0/6`
+        //   `.../t/slug/64/6`      -> appending gave `.../64/6/6`
+        // The second is the normal case, because Discourse rewrites this element as you
+        // scroll (`page:changed`) and the current URL includes whichever post you are on.
+        // So: drop the query, then drop a trailing post number, keeping `/t/<slug>/<id>`.
+        // The match is required rather than best-effort — if this is not a topic URL,
+        // appending a number to it invents a route.
         const canonical = document.querySelector('link[rel="canonical"]')?.href;
-        if (canonical && /^\d+$/.test(number)) {
-          const clean = canonical.split(/[?#]/)[0].replace(/\/+$/, "");
-          return `${clean}/${number}`;
+        const topic = canonical
+          ?.split(/[?#]/)[0]
+          .replace(/\/+$/, "")
+          .match(/^(.*\/t\/[^/]+\/\d+)(?:\/\d+)?$/);
+        if (topic && /^\d+$/.test(number)) {
+          return `${topic[1]}/${number}`;
         }
         const id = article?.dataset?.postId;
         if (id) return `${window.location.origin}/p/${id}`;
@@ -404,7 +411,9 @@ export default {
         share.setAttribute("aria-label", i18n(themePrefix("share")));
         share.innerHTML = SHARE_SVG;
         share.addEventListener("click", async () => {
-          const url = postUrl(anchor);
+          // Read at click time, not at build time: the trail state arrives after the card
+          // is on screen, and a link captured in the closure would be the post forever.
+          const url = wrapper.dataset.shareUrl || postUrl(anchor);
           const ok = await copyText(url);
           flash(
             share,
@@ -661,10 +670,37 @@ export default {
        * this sit among everything else", which is the question the map exists for. Offered
        * to anyone the server will tell — its owner, or any reader of a public trail.
        */
+      /**
+       * The public address of a ride on the map — what the share button should hand out
+       * whenever there is one.
+       *
+       * `/share/route/<id>` is the web-only share surface and is deliberately NOT claimed
+       * by the app's AASA (see the note beside the route in the worker), which is exactly
+       * what makes it safe to paste anywhere. Derived from `map_url` rather than asking
+       * the plugin for a second field: the id is already in there, under `t` for a public
+       * trail and `trail` for a private one, and the origin is the marketing host the
+       * server chose.
+       */
+      function shareRouteFor(trail) {
+        if (!trail?.map_url) return null;
+        try {
+          const at = new URL(trail.map_url);
+          const id = at.searchParams.get("t") || at.searchParams.get("trail");
+          return id ? `${at.origin}/share/route/${encodeURIComponent(id)}` : null;
+        } catch {
+          return null;
+        }
+      }
+
       const actionsOf = (wrapper) => wrapper.querySelector(".dbx-gpx-card__actions") || wrapper;
       const noteOf = (wrapper) => wrapper.querySelector(".dbx-gpx-card__note");
 
       function addMapLink(wrapper, trail) {
+        // Set even when the button below is not drawn, so the share button switches from
+        // the forum post to the map as soon as the trail is known.
+        const share = shareRouteFor(trail);
+        if (share) wrapper.dataset.shareUrl = share;
+        else delete wrapper.dataset.shareUrl;
         if (!trail?.map_url) return;
         const link = document.createElement("a");
         link.className = "btn btn-small dbx-gpx-preview__map";
