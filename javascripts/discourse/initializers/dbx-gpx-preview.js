@@ -263,30 +263,78 @@ export default {
       const SHARE_SVG =
         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>';
 
-      /** The post this attachment lives in — never the raw file URL. */
+      /**
+       * The post this attachment lives in — never the raw file URL, which outlives the
+       * post, carries no context, and on a private ride is the secret itself.
+       *
+       * Three ways down, because the DOM archaeology is the fragile part and the last
+       * step never fails. `<article id="post_N">` carries the post NUMBER (not the id),
+       * and Discourse keeps `link[rel=canonical]` pointing at the current topic across
+       * SPA route changes — together those give the pretty URL a chat app can preview.
+       * `/p/<id>` is a supported permalink but opaque, so it is the fallback rather than
+       * the first choice.
+       */
       function postUrl(anchor) {
         const article = anchor.closest("article[data-post-id]");
+        const number = (article?.id || "").replace(/^post_/, "");
+        const canonical = document.querySelector('link[rel="canonical"]')?.href;
+        if (canonical && /^\d+$/.test(number)) {
+          return `${canonical.replace(/\/+$/, "")}/${number}`;
+        }
         const id = article?.dataset?.postId;
-        const cooked = anchor.closest(".cooked");
-        const number = cooked?.closest("[data-post-number]")?.dataset?.postNumber;
-        const topic = document.querySelector("meta[property='og:url']")?.content;
-        if (topic && number) return `${topic}/${number}`;
         if (id) return `${window.location.origin}/p/${id}`;
         return window.location.href;
       }
 
-      /** A word in the button's place, briefly. Cheaper than a toast and it is where the
-          reader is already looking. */
-      function flash(button, text) {
-        const previous = button.getAttribute("aria-label");
-        button.classList.add("dbx-gpx-card__share--done");
-        button.setAttribute("aria-label", text);
+      /**
+       * Clipboard, with the older path behind it.
+       *
+       * `navigator.clipboard` needs a secure context AND, in some embedded WebViews, a
+       * permission the host never grants — it rejects rather than throwing synchronously.
+       * `execCommand` is deprecated and still the only thing that works in those. Returns
+       * whether the text actually landed, because the caller has to be able to say so.
+       */
+      async function copyText(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // fall through
+        }
+        try {
+          const box = document.createElement("textarea");
+          box.value = text;
+          box.setAttribute("readonly", "");
+          box.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+          document.body.appendChild(box);
+          box.select();
+          const ok = document.execCommand("copy");
+          box.remove();
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+
+      /**
+       * A word in the button's place, briefly. Cheaper than a toast and it is where the
+       * reader is already looking.
+       *
+       * The first version of this only ever ran on success and swallowed every failure,
+       * so a refused clipboard write looked exactly like a dead button. Both outcomes say
+       * something now.
+       */
+      function flash(button, text, ok) {
+        const previous = button.dataset.label || button.title;
+        button.dataset.label = previous;
+        button.classList.add(ok ? "dbx-gpx-card__share--done" : "dbx-gpx-card__share--failed");
         button.title = text;
+        button.setAttribute("aria-label", text);
         window.setTimeout(() => {
-          button.classList.remove("dbx-gpx-card__share--done");
-          button.setAttribute("aria-label", previous);
+          button.classList.remove("dbx-gpx-card__share--done", "dbx-gpx-card__share--failed");
           button.title = previous;
-        }, 1600);
+          button.setAttribute("aria-label", previous);
+        }, 1800);
       }
 
       function buildPreview(anchor, source) {
@@ -351,17 +399,12 @@ export default {
         share.innerHTML = SHARE_SVG;
         share.addEventListener("click", async () => {
           const url = postUrl(anchor);
-          try {
-            if (navigator.share) {
-              await navigator.share({ title: name || "GPX", url });
-              return;
-            }
-            await navigator.clipboard.writeText(url);
-            flash(share, i18n(themePrefix("share_copied")));
-          } catch {
-            // An abandoned share sheet rejects, and so does a clipboard write the browser
-            // refused. Neither is worth an error state — the link is still on screen.
-          }
+          const ok = await copyText(url);
+          flash(
+            share,
+            i18n(themePrefix(ok ? "share_copied" : "share_failed")),
+            ok
+          );
         });
 
         head.append(title, share, dl);

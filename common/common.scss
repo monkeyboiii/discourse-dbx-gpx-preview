@@ -144,6 +144,9 @@ button.dbx-gpx-card__dl {
 .dbx-gpx-card__share--done {
   color: var(--success);
 }
+.dbx-gpx-card__share--failed {
+  color: var(--danger);
+}
 .dbx-gpx-card__meta {
   margin: 0.25em 0 0;
   color: var(--primary-medium);
