@@ -264,6 +264,23 @@ export default {
         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>';
 
       /**
+       * Whether to hand this to the platform's own share sheet.
+       *
+       * Mirrors what Discourse's post-share button checks, which is the proof this works
+       * at all: it brings up the system sheet inside the app's WebView, so `navigator
+       * .share` is available here and copy-only was the wrong answer on a phone. The
+       * coarse-pointer test stands in for Discourse's isIOS/isAndroid — on a desktop the
+       * sheet is either absent or worse than the clipboard.
+       */
+      function canShareNatively() {
+        return (
+          window.location.protocol === "https:" &&
+          typeof navigator.share === "function" &&
+          window.matchMedia?.("(pointer: coarse)").matches
+        );
+      }
+
+      /**
        * Clipboard, with the older path behind it.
        *
        * `navigator.clipboard` needs a secure context AND, in some embedded WebViews, a
@@ -388,6 +405,21 @@ export default {
           // already on screen.
           const url = wrapper.dataset.shareUrl;
           if (!url) return;
+
+          // The system sheet on a phone, the clipboard everywhere else. `navigator.share`
+          // is called with nothing awaited before it: iOS grants the gesture transient
+          // activation and drops it at the first await, after which it refuses.
+          if (canShareNatively()) {
+            try {
+              await navigator.share({ title: name || "GPX", url });
+              return;
+            } catch (err) {
+              // Dismissing the sheet is a decision, not a failure — say nothing. Anything
+              // else falls through to the clipboard, which is the point of having one.
+              if (err?.name === "AbortError") return;
+            }
+          }
+
           const ok = await copyText(url);
           flash(
             share,
