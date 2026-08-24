@@ -277,9 +277,15 @@ export default {
       function postUrl(anchor) {
         const article = anchor.closest("article[data-post-id]");
         const number = (article?.id || "").replace(/^post_/, "");
+        // The query string has to go before the post number is appended: a topic opened
+        // directly is served with `<link rel=canonical href=".../t/slug/123?page=0">`,
+        // and naively appending gives `.../123?page=0/4`. Discourse keeps this element
+        // current across SPA navigation (it rewrites it on `page:changed`), so it is
+        // trustworthy once cleaned.
         const canonical = document.querySelector('link[rel="canonical"]')?.href;
         if (canonical && /^\d+$/.test(number)) {
-          return `${canonical.replace(/\/+$/, "")}/${number}`;
+          const clean = canonical.split(/[?#]/)[0].replace(/\/+$/, "");
+          return `${clean}/${number}`;
         }
         const id = article?.dataset?.postId;
         if (id) return `${window.location.origin}/p/${id}`;
