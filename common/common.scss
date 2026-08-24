@@ -152,6 +152,21 @@ button.dbx-gpx-card__dl {
 .dbx-gpx-card__share--failed {
   color: var(--danger);
 }
+/* The wait, made visible. Spinning the glyph itself keeps the control's box exactly the
+   size it was, so the card does not reflow under the thumb that just pressed it. */
+.dbx-gpx-card__dl[data-busy] svg {
+  animation: dbx-gpx-spin 0.7s linear infinite;
+}
+@keyframes dbx-gpx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dbx-gpx-card__dl[data-busy] svg {
+    animation-duration: 2.4s;
+  }
+}
 .dbx-gpx-card__meta {
   margin: 0.25em 0 0;
   color: var(--primary-medium);

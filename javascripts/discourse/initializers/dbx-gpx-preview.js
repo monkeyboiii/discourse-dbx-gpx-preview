@@ -260,6 +260,28 @@ export default {
         '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
       const DOWNLOAD_SVG =
         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+      // A ring, drawn rather than animated in JS so the spin is the compositor's problem.
+      const SPINNER_SVG =
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9" /></svg>';
+
+      /**
+       * Swaps a control's glyph for a spinner while something off-screen decides.
+       *
+       * Both of these controls hand off to iOS — the share sheet, and a download that has
+       * to reach the object store before the save sheet can appear — and there is a beat
+       * where nothing has happened yet. On a phone that beat reads as a dead tap, so the
+       * reader taps again. Returns a function that puts the glyph back.
+       */
+      function spinWhile(button, glyph) {
+        if (button.dataset.busy) return () => {};
+        button.dataset.busy = "1";
+        button.innerHTML = SPINNER_SVG;
+        return () => {
+          delete button.dataset.busy;
+          button.innerHTML = glyph;
+        };
+      }
+
       const SHARE_SVG =
         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>';
 
@@ -378,6 +400,18 @@ export default {
         dl.title = i18n(themePrefix("download"));
         dl.setAttribute("aria-label", i18n(themePrefix("download")));
         dl.innerHTML = DOWNLOAD_SVG;
+        // The download is a navigation, not a promise: the page is never told when iOS
+        // took over. So the spinner is time-boxed, and `pagehide` clears it early on the
+        // platforms that do background the page.
+        dl.addEventListener("click", () => {
+          const done = spinWhile(dl, DOWNLOAD_SVG);
+          const t = window.setTimeout(done, 2500);
+          window.addEventListener(
+            "pagehide",
+            () => { window.clearTimeout(t); done(); },
+            { once: true }
+          );
+        });
         anchor.classList.add("dbx-gpx-preview__source");
 
         // Share sits before the download, because the two are the same kind of act — take
@@ -409,18 +443,21 @@ export default {
           // The system sheet on a phone, the clipboard everywhere else. `navigator.share`
           // is called with nothing awaited before it: iOS grants the gesture transient
           // activation and drops it at the first await, after which it refuses.
+          const done = spinWhile(share, SHARE_SVG);
           if (canShareNatively()) {
             try {
               await navigator.share({ title: name || "GPX", url });
+              done();
               return;
             } catch (err) {
               // Dismissing the sheet is a decision, not a failure — say nothing. Anything
               // else falls through to the clipboard, which is the point of having one.
-              if (err?.name === "AbortError") return;
+              if (err?.name === "AbortError") { done(); return; }
             }
           }
 
           const ok = await copyText(url);
+          done();
           flash(
             share,
             i18n(themePrefix(ok ? "share_copied" : "share_failed")),
