@@ -1,6 +1,6 @@
 # DirtBikeX GPX Preview — theme component
 
-Decorates cooked `.gpx` attachment links with a click-to-load [gpx.studio](https://gpx.studio) map embed (MapLibre, elevation profile, waypoints, stats). Sibling of `discourse-bdi-native-embed` — same decorate-cooked architecture, simpler job (attachments cook as plain anchors; no onebox to reclaim). Research conclusions travel with this repo in [RESEARCH.md](RESEARCH.md) (distilled from `gpx-mvp-scope.md` + `gpx-pre.md` at the umbrella root).
+Decorates cooked `.gpx` attachment links with a click-to-load [gpx.studio](https://gpx.studio) map embed (MapLibre, elevation profile, waypoints, stats). Sibling of `discourse-bdi-native-embed` — same decorate-cooked architecture, simpler job (attachments cook as plain anchors; no onebox to reclaim). Research conclusions travel with this repo in [RESEARCH.md](agents.d/modules/research.md) (distilled from `gpx-mvp-scope.md` + `gpx-pre.md` at the umbrella root).
 
 ```text
 a.attachment[href$=.gpx] ──decorate──► [Preview track] ──click──► resolve short-url ──► pre-flight fetch
@@ -28,7 +28,7 @@ a.attachment[href$=.gpx] ──decorate──► [Preview track] ──click─�
 The iOS app prefetches topic pages with full JS execution (up to 2 unseen pages), and decoration also runs in the composer preview (no `onlyStream`, matching native-embed) — auto-embedding would boot hidden MapLibre WebGL instances per prefetch and per keystroke. So decoration inserts only a button; the iframe exists strictly between Preview and Hide clicks, and Hide **removes** it to release the WebGL context. NOT done: gpx-pre.md's size-tiered auto-preview.
 
 ### Pre-flight scan decides embed vs fallback
-The embed fails **silently** on several real file shapes (its load chain has no `.catch`, and two of the three failure modes throw nothing at all — see [RESEARCH.md](RESEARCH.md) § "File-shape RCA"). So on click, after resolving the URL, the component fetches the GPX itself — the same URL the iframe will fetch, so it is browser/CDN-cached and doubles as a health check the embed cannot give us — regex-scans `lat`/`lon` off `trkpt`/`rtept`/`wpt`, and classifies:
+The embed fails **silently** on several real file shapes (its load chain has no `.catch`, and two of the three failure modes throw nothing at all — see [RESEARCH.md](agents.d/modules/research.md) § "File-shape RCA"). So on click, after resolving the URL, the component fetches the GPX itself — the same URL the iframe will fetch, so it is browser/CDN-cached and doubles as a health check the embed cannot give us — regex-scans `lat`/`lon` off `trkpt`/`rtept`/`wpt`, and classifies:
 
 | Shape | Action | Why |
 |---|---|---|
@@ -84,7 +84,7 @@ Hosted embeds need no map key (the default liberty basemaps are keyless). A self
 
 - **"No button appears"** — anchor isn't `a.attachment` (file predates `.gpx` authorization → rebake the post) or sits inside a quote.
 - **"Button, then error note"** — resolution failed; check Network for `POST /uploads/lookup-urls` (signed-in) or `HEAD /uploads/short-url/…` (anon). Failures aren't cached — Hide → Preview retries for real.
-- **"Map loads but no track / world zoom / 0.00 km"** — pre-flight should now prevent this; if it still happens the file classified as `track` but the embed choked. Open devtools on the iframe (its load chain has no `.catch`, so failures are silent). Known signatures: `TypeError: … (reading 'distance')` in `_elevationComputation` = the upstream route-point crash (means a `<rtept>` slipped past the scan); a CORS error = verify with `curl -sI -H 'Origin: https://gpx.studio' <file url>`. See [RESEARCH.md](RESEARCH.md) § "File-shape RCA" for the three distinct causes.
+- **"Map loads but no track / world zoom / 0.00 km"** — pre-flight should now prevent this; if it still happens the file classified as `track` but the embed choked. Open devtools on the iframe (its load chain has no `.catch`, so failures are silent). Known signatures: `TypeError: … (reading 'distance')` in `_elevationComputation` = the upstream route-point crash (means a `<rtept>` slipped past the scan); a CORS error = verify with `curl -sI -H 'Origin: https://gpx.studio' <file url>`. See [RESEARCH.md](agents.d/modules/research.md) § "File-shape RCA" for the three distinct causes.
 - **"Fallback card on a file that looks fine"** — the scan found `<rtept>` (any route element routes the file to fallback) or fewer than 2 distinct track coordinates. Check with `grep -c '<rtept' file.gpx` and `grep -o 'lat="[^"]*" lon="[^"]*"' file.gpx | sort -u | wc -l`.
 - **"Blank/grey box in the iOS app"** — WebGL-in-iframe or gpx.studio unreachable on that network (CN); the error note only covers resolve failures, not in-iframe failures (#302 — no signal exists).
 - **"Duplicate buttons after edit"** — `data-dbx-gpx-processed` guard regression.
