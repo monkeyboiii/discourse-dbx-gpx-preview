@@ -1,3 +1,9 @@
+---
+kind: note
+status: current
+summary: Lean record of the 2026-08-10 scoping that produced this component. Full research lives in gpx-pre.md + gpx-mvp-scope.md at the DirtBikeX…
+---
+
 # Research conclusions (distilled)
 
 Lean record of the 2026-08-10 scoping that produced this component. Full research lives in
